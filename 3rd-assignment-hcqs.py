@@ -8,9 +8,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.16.1
 #   kernelspec:
-#     display_name: venv
+#     display_name: .venv
 #     language: python
-#     name: venv
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -128,140 +128,47 @@ def read_list(filename):
 # * Apply penalty-based encoding using three functions
 
 # %%
-import numpy as np
-import matplotlib.pyplot as plt
-from docplex.mp.model import Model
+from qiskit_optimization.applications import BinPacking
+from qiskit_optimization.converters import QuadraticProgramToQubo
+from qiskit_optimization.algorithms import CplexOptimizer
 
-from qiskit import BasicAer
-import qiskit_algorithms
-from qiskit_optimization.algorithms import CplexOptimizer, MinimumEigenOptimizer
-from qiskit_optimization.algorithms.admm_optimizer import ADMMParameters, ADMMOptimizer
-from qiskit_optimization import QuadraticProgram
 
-from qiskit_optimization.converters import InequalityToEquality, IntegerToBinary, LinearEqualityToPenalty
+bpp_example = read_list("bpp_instances")[12]
+print("BPP instance:", bpp_example)
 
-from qiskit_optimization.translators import from_docplex_mp
+wj = bpp_example[0] # item weights
+Q = bpp_example[1]  # capacity of each bin
+n = bpp_example[2]  # num of bins
+m = bpp_example[3]  # num of items
 
-def data_bins(results, wj, n, m, l=0, simplify=False):
-    """save the results on a dictionary with the three items, bins, items, and index.
-    results (cplex.solve): results of the optimization
-    wj: (array (1,m): weights of the items
-    n: (int) number of items
-    m: (int) number of bins
-    """
-    if simplify:
-        bins = np.ones((m,))
-        if m-l > 0: 
-            bins[m-l-1:m] = results[:m-l]
-        items = np.zeros((m,n))
-        items[:,1:] = results[m-l:(m-1)*n+m-l].reshape(m,n-1)
-        items[0,0] = 1
-        items = items.reshape(m,n) * wj
-        return {"bins":bins, "items":items,"index":np.arange(m)}
-    else:        
-        return {"bins":results[:m], "items":results[m:m+m*n].reshape(m,n) * wj, "index":np.arange(m)}
-
-def plot_bins(results, wj, n, m, l=0,simplify=False):
-    """plot in a bar diagram the results of an optimization bin packing problem"""
-    res = data_bins(results.x, wj, n, m, l, simplify)
-    plt.figure()
-    ind = res["index"]
-    plt.bar(ind, res["items"][:,0], label=f"item {0}")
-    suma = bottom=res["items"][:,0]
-    for j in range(1,n):
-        plt.bar(ind, res["items"][:,j], bottom=suma, label=f"item {j}")
-        suma += res["items"][:,j]
-    plt.hlines(Q,0-0.5,m-0.5,linestyle="--", color="r",label="Max W")
-    plt.xticks(ind)
-    plt.xlabel("Bin")
-    plt.ylabel("Weight")
-    plt.legend()
-
+bp = BinPacking(wj, Q, n)
 
 # %%
-#### n = 3 # number of bins
-#m = n # number of items
-#Q = 40 # max weight of a bin
-#wj = np.random.(1,Q,n) # Randomly picking the item weight
+# NON QUBO
+print("\n" + "=" * 10 + "\nNON-QUBO\n" + "=" * 10)
 
-bpp_instances = read_list("bpp_instances")
-#print(bpp_instances)
+qp = bp.to_quadratic_program()
 
-# first bin problem
-bpp1 = bpp_instances[0]
-print(bpp1)
+result = CplexOptimizer().solve(qp)
+print("Result:", result.__repr__())
+print("Interpreted result:", bp.interpret(result))
 
-
-wj = bpp1[0]
-Q = bpp1[1]
-n = bpp1[2] # num of bins
-m = bpp1[3] # num of items
-
-# Workaround, FIX will be a problem later !
-n = m
-
-# Construct model using docplex
-mdl = Model("BinPacking")
-
-x = mdl.binary_var_list([f"x{i}" for i in range(n)]) # list of variables that represent the bins
-e =  mdl.binary_var_list([f"e{i//m},{i%m}" for i in range(n*m)]) # variables that represent the items on the specific bin
-
-objective = mdl.sum([x[i] for i in range(n)])
-
-mdl.minimize(objective)
-
-for j in range(m):
-    # First set of constraints: the items must be in any bin
-    constraint0 = mdl.sum([e[i*m+j] for i in range(n)])
-    mdl.add_constraint(constraint0 == 1, f"cons0,{j}")
-    
-for i in range(n):
-    # Second set of constraints: weight constraints
-    constraint1 = mdl.sum([wj[j] * e[i*m+j] for j in range(m)])
-    mdl.add_constraint(constraint1 <= Q * x[i], f"cons1,{i}")
-
-
-# Load quadratic program from docplex model
-#qp = QuadraticProgram()
-qp = from_docplex_mp(mdl)
-print(qp.export_as_lp_string())
-
-# convert from DOcplex model to Qiskit Quadratic program
-# qp = QuadraticProgram()
-qp = from_docplex_mp(mdl)
-
-# Solving Quadratic Program using CPLEX
-cplex = CplexOptimizer()
-result = cplex.solve(qp)
-print(result)
-plot_bins(result, wj, n, m)
-
-# %% [markdown]
-# ## QUBO Representation
+_ = bp.get_figure(result)
 
 # %%
-ineq2eq = InequalityToEquality()
-qp_eq = ineq2eq.convert(qp)
-print(qp_eq.export_as_lp_string())
-print(f"The number of variables is {qp_eq.get_num_vars()}")
+## QUBO
+print("\n" + "=" * 10 + "\nQUBO\n" + "=" * 10)
 
-int2bin = IntegerToBinary()
-qp_eq_bin = int2bin.convert(qp_eq)
-print(qp_eq_bin.export_as_lp_string())
-print(f"The number of variables is {qp_eq_bin.get_num_vars()}")
+# TODO
+penalty = 1
+qp_qubo = QuadraticProgramToQubo(penalty=penalty).convert(qp)
 
-lineq2penalty = LinearEqualityToPenalty()
-qubo = lineq2penalty.convert(qp_eq_bin)
-print(f"The number of variables is {qp_eq_bin.get_num_vars()}")
-print(qubo.export_as_lp_string())
+result_qubo = CplexOptimizer().solve(qp_qubo)
+print("Result:", result_qubo.__repr__())
+print("Interpreted result:", bp.interpret(result_qubo))
 
-cplex = CplexOptimizer()
-result = cplex.solve(qubo)
-print(result)
-
-# Visualization does not work, FIX
-data_bins(result.x, wj, n, m, simplify=False)
-plot_bins(result, wj, n, m, simplify=False)
+# FIXME
+_ = bp.get_figure(result_qubo)
 
 # %% [markdown]
 # # Encoding QUBO into ISING Hamiltonian #
@@ -297,15 +204,17 @@ optimizer = COBYLA()
 
 qaoa = QAOA(reps=1, sampler=sampler, optimizer=optimizer)
 
+# TODO
+
 # QUBO as an Ising Hamiltonian
-operator, offset = qubo.to_ising()
+#operator, offset = qubo.to_ising()
 
-result_qaoa = qaoa.compute_minimum_eigenvalue(operator=operator)
-
-print(result_qaoa)
-
-plot_bins(result, wj, n, m, l, simplify=True)
-plt.title("QAOA solution", fontsize=18)
+#result_qaoa = qaoa.compute_minimum_eigenvalue(operator=operator)
+#
+#print(result_qaoa)
+#
+#plot_bins(result, wj, n, m, l, simplify=True)
+#plt.title("QAOA solution", fontsize=18)
 
 # %% [markdown]
 # # Solving BPP instances #
