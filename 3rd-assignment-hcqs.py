@@ -130,7 +130,7 @@ def read_list(filename):
 # %%
 from qiskit_optimization.applications import BinPacking
 from qiskit_optimization.converters import QuadraticProgramToQubo
-from qiskit_optimization.algorithms import CplexOptimizer
+from qiskit_optimization.algorithms import CplexOptimizer, OptimizationResult
 
 
 bpp_example = read_list("bpp_instances")[12]
@@ -159,16 +159,22 @@ _ = bp.get_figure(result)
 ## QUBO
 print("\n" + "=" * 10 + "\nQUBO\n" + "=" * 10)
 
-# TODO
-penalty = 1
+penalty = 123  # TODO
 qp_qubo = QuadraticProgramToQubo(penalty=penalty).convert(qp)
 
 result_qubo = CplexOptimizer().solve(qp_qubo)
 print("Result:", result_qubo.__repr__())
-print("Interpreted result:", bp.interpret(result_qubo))
 
-# FIXME
-_ = bp.get_figure(result_qubo)
+# for plotting, take as much x/variables as there are in the non-qubo result
+result_qubo_for_plot = OptimizationResult(
+    x=result_qubo.x[0:len(result.x)],
+    fval=result_qubo.fval,
+    variables=result_qubo.variables[0:len(result.variables)],
+    status=result_qubo.status,
+    samples=result_qubo.samples,
+)
+print("Interpreted result:", bp.interpret(result_qubo_for_plot))
+_ = bp.get_figure(result_qubo_for_plot)
 
 # %% [markdown]
 # # Encoding QUBO into ISING Hamiltonian #
