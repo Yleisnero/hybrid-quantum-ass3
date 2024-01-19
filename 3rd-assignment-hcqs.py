@@ -89,25 +89,29 @@ def read_list(filename):
 #
 # ### Define penalties ###
 # To enforce the constraints, we introduce penalty terms to the objective function. These terms penalize solutions that violate the constraints. Firsts, we rewrite constraints $g(x_{ij})$ and $h(x_{ij})$ as follows,
-#      \begin{align*}
-#         g(x_{ij}) = \sum_{j=1}^{K} x_{ij} - 1 = 0 \qquad \forall i \\
-#         h(x_{ij}) = \sum_{i=1}^N w_{i}x_{ij} - C \cdot B_j \le 0 \qquad \forall j \\
-#     \end{align*}
-#     Second, introduce penalty functions $p_1(\lambda, g(x))$ and $p_2(\beta, h(x))$ with coefficients $\{\lambda, \beta\} \geq 0 $
-#     \begin{equation}\label{penalty1}
-#         p_1(\lambda, g(x_{ij})) =
-#         \begin{cases}
-#             0 & \text{if $g(x_{ij}) \leq 0$} \\
-#             \lambda g(x_{ij}) & \text{if $g(x_{ij}) > 0$} 
-#         \end{cases}
-#     \end{equation}
-#     \begin{equation}\label{penalty2}
-#         p_2(\beta, h(x_{ij})) =
-#         \begin{cases}
-#             0 & \text{if $h(x_{ij}) \leq 0$} \\
-#             \beta h(x_{ij}) & \text{if $h(x_{ij}) > 0$} 
-#         \end{cases} 
-#     \end{equation}
+#
+# \begin{align*}
+#     g(x_{ij}) = \sum_{j=1}^{K} x_{ij} - 1 = 0 \qquad \forall i \\
+#     h(x_{ij}) = \sum_{i=1}^N w_{i}x_{ij} - C \cdot B_j \le 0 \qquad \forall j \\
+# \end{align*}
+#
+# Second, introduce penalty functions $p_1(\lambda, g(x))$ and $p_2(\beta, h(x))$ with coefficients $\{\lambda, \beta\} \geq 0 $
+#
+# \begin{equation}
+#     p_1(\lambda, g(x_{ij})) =
+#     \begin{cases}
+#         0 & \text{if $g(x_{ij}) \leq 0$} \\
+#         \lambda g(x_{ij}) & \text{if $g(x_{ij}) > 0$} 
+#     \end{cases}
+# \end{equation}
+#
+# \begin{equation}
+#     p_2(\beta, h(x_{ij})) =
+#     \begin{cases}
+#         0 & \text{if $h(x_{ij}) \leq 0$} \\
+#         \beta h(x_{ij}) & \text{if $h(x_{ij}) > 0$} 
+#     \end{cases} 
+# \end{equation}
 #     
 # In literature, there are multiple methods for penalization such as the exterior penalty function and interior penalty function.
 #
