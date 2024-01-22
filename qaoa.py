@@ -9,13 +9,12 @@ from qiskit_optimization.algorithms import MinimumEigenOptimizer
 from qiskit.primitives import BackendSampler
 
 from instance import example_instance
-from quadratic_simple import quadratic_simple
-from qp_to_qubo import qp_to_qubo
-from quadratic_trivial import quadratic_trivial
+from quadratic_penalty import quadratic_penalty
 
 
 def solve_qaoa(qubo):
     backend = Aer.get_backend('aer_simulator')
+    backend.set_options(method='statevector_gpu')
     algorithm_globals.random_seed = 10598
     qaoa_mes = QAOA(sampler=BackendSampler(backend), optimizer=COBYLA(), initial_point=[0.0, 0.0])
     qaoa = MinimumEigenOptimizer(qaoa_mes)
@@ -24,6 +23,8 @@ def solve_qaoa(qubo):
 
 def solve_warm_start_qaoa(qubo):
     algorithm_globals.random_seed = 10598
+    sampler = Sampler()
+    s
     qaoa_mes = QAOA(sampler=Sampler(), optimizer=COBYLA(), initial_point=[0.0, 0.0])
     qaoa = WarmStartQAOAOptimizer(pre_solver=CplexOptimizer(),
                                   relax_for_pre_solver=True,
@@ -37,12 +38,20 @@ def solve_exact(qubo):
     return exact.solve(qubo)
 
 
+def solve_cplex(qubo):
+    cplex = CplexOptimizer()
+    return cplex.solve(qubo)
+
+
 if __name__ == "__main__":
-    quadratic_simple = quadratic_trivial()
+    quadratic_simple = quadratic_penalty(example_instance())
     print(quadratic_simple.prettyprint())
-    exact_result = solve_exact(quadratic_simple)
+    exact_result = solve_cplex(quadratic_simple)
     print(exact_result)
-    qaoa_result = solve_qaoa(quadratic_simple)
-    print(qaoa_result)
+    # print(quadratic_simple.prettyprint())
+    # exact_result = solve_exact(quadratic_simple)
+    # print(exact_result
+    # qaoa_result = solve_qaoa(quadratic_simple)
+    # print(qaoa_result)
     warm_start_qaoa_result = solve_warm_start_qaoa(quadratic_simple)
     print(warm_start_qaoa_result)
